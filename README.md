@@ -8,9 +8,15 @@ directories.
 > **Note**: This plugin was extracted from my personal Neovim config, so it's
 > opinionated by design.
 
-## Table of Contents
+Table of Contents:
 
-[[_toc_]]
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+  - [Example setup](#example-setup)
+  - [Configuration options](#configuration-options)
+  - [Custom list_dir implementation](#custom-list_dir-implementation)
+  - [Customizing colors](#customizing-colors)
 
 ## Features
 
@@ -194,9 +200,7 @@ require("tabs-as-projects").pick_project({
 
 ```
 
-### Advanced
-
-#### Custom `list_dir` implementation
+### Custom `list_dir` implementation
 
 If for some reason, default `find_list_dir` doesn't suit your needs, you can
 create your own using a helper function `list_using_cmd`:
@@ -231,7 +235,7 @@ pick_project({
 })
 ```
 
-#### Customizing Colors
+### Customizing Colors
 
 The tabline uses highlight groups that you can customize:
 
