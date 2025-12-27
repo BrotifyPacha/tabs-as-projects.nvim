@@ -113,16 +113,12 @@ use {
 <details>
 <summary>Using vim.pack (Neovim v0.12+)</summary>
 
-First, clone the repository:
-
-```bash
-git clone https://github.com/brotifypacha/tabs-as-projects.nvim \
-  ~/.local/share/nvim/site/pack/plugins/start/tabs-as-projects.nvim
-```
-
-Then add to your `init.lua`:
-
 ```lua
+
+vim.pack.add({
+  "https://github.com/BrotifyPacha/tabs-as-projects.nvim.git"
+})
+
 -- Enable the custom tabline
 vim.opt.tabline = "%!v:lua.require('tabs-as-projects.ui').tabline()"
 
