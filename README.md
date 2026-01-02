@@ -301,6 +301,7 @@ vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
 
   end
 }))
+```
 
 ### Customizing Colors
 
