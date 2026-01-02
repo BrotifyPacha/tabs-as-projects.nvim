@@ -1,4 +1,6 @@
-local M = {}
+local M = {
+  opts = {}
+}
 
 local function get_hl(name)
   return vim.api.nvim_get_hl(0, { name = name , link = false})
@@ -31,6 +33,23 @@ vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function () setup_colors() end
 })
 
+--- @class ui_options
+--- @field close_icon string|nil
+--- @field use_nerd_font boolean|nil
+
+--- @param opts ui_options
+function M.setup(opts)
+
+  if opts.use_nerd_font then
+    M.opts.close_icon = ''
+  end
+
+  if opts.close_icon ~= nil then
+    M.opts.close_icon = opts.close_icon
+  end
+
+end
+
 function M.tabline()
   local tabs = {}
   local selected_tab = vim.fn.tabpagenr()
@@ -40,8 +59,11 @@ function M.tabline()
 
     local tab_label = M.tab_label(is_selected, tab_index, tab_id)
     local tab_selector = '%' .. tab_index .. 'T'
-    local tab_closer = '%' .. tab_index  .. 'X%T '
-    local tab_button = tab_selector .. tab_label .. ' ' .. tab_closer
+    local tab_closer = ''
+    if M.opts.close_icon ~= nil and #(M.opts.close_icon) > 0 then
+      tab_closer = '%' .. tab_index  .. 'X'.. M.opts.close_icon .. ' '
+    end
+    local tab_button = tab_selector .. tab_label .. ' ' .. tab_closer .. '%T'
 
     local sep_highlight = '%#TabProjects_Divider#'
     local sep = '│'
