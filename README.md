@@ -53,14 +53,21 @@ Requirements:
   },
   config = function()
 
-    -- 1. Enable tabline (use `:help 'showtabline'` for more details)
-    vim.opt.showtabline = 2
+    local tabs_as_projects = require("tabs-as-projects")
 
-    -- 2. Use plugin-provided tabline
+    -- Enable tabline (use `:help 'showtabline'` for more details)
+    vim.opt.showtabline = 2
+    -- Use plugin-provided tabline
     vim.opt.tabline = "%!v:lua.require('tabs-as-projects.ui').tabline()"
 
-    -- 3. Create a keymap for the project picker
-    local tabs_as_projects = require("tabs-as-projects")
+    -- Optionally override some ui settings
+    tabs_as_projects.setup({
+      ui = {
+        use_nerd_font = true
+      }
+    })
+
+    -- Create a keymap for the project picker
     local search_dirs = {
       { path = "~/workspace", category = "main" },
       { path = "~/projects", category = "side" },
@@ -86,15 +93,21 @@ use {
     "nvim-telescope/telescope.nvim",
   },
   config = function()
+    local tabs_as_projects = require("tabs-as-projects")
 
-    -- 1. Enable tabline (use `:help 'showtabline'` for more details)
+    -- Enable tabline (use `:help 'showtabline'` for more details)
     vim.opt.showtabline = 2
-
-    -- 2. Use plugin-provided tabline
+    -- Use plugin-provided tabline
     vim.opt.tabline = "%!v:lua.require('tabs-as-projects.ui').tabline()"
 
-    -- 3. Create a keymap for the project picker
-    local tabs_as_projects = require("tabs-as-projects")
+    -- Optionally override some ui settings
+    tabs_as_projects.setup({
+      ui = {
+        use_nerd_font = true
+      }
+    })
+
+    -- Create a keymap for the project picker
     local search_dirs = {
       { path = "~/workspace", category = "main" },
       { path = "~/projects", category = "side" },
@@ -119,21 +132,30 @@ vim.pack.add({
   "https://github.com/BrotifyPacha/tabs-as-projects.nvim.git"
 })
 
--- Enable the custom tabline
+local tabs_as_projects = require("tabs-as-projects")
+
+-- Enable tabline (use `:help 'showtabline'` for more details)
+vim.opt.showtabline = 2
+-- Use plugin-provided tabline
 vim.opt.tabline = "%!v:lua.require('tabs-as-projects.ui').tabline()"
 
--- Setup project picker with your configuration
-local pick_project = require("tabs-as-projects").pick_project
+-- Optionally override some ui settings
+tabs_as_projects.setup({
+  ui = {
+    use_nerd_font = true
+  }
+})
 
-vim.keymap.set("n", "<leader>fp", function()
-  pick_project({
-    search_dirs = {
-      { path = "~/workspace/personal", category = "personal" },
-      { path = "~/workspace/work", category = "work" },
-    },
-    pick_cmd = "tcd", -- or "cd", "lcd"
-  })
-end, { desc = "Pick project" })
+-- Create a keymap for the project picker
+local search_dirs = {
+  { path = "~/workspace", category = "main" },
+  { path = "~/projects", category = "side" },
+  { path = "~/.config", category = "config" },
+}
+
+vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
+vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+
 ```
 
 </details>
@@ -144,14 +166,17 @@ end, { desc = "Pick project" })
 
 ```lua
 
--- 1. Enable tabline (use `:help 'showtabline'` for more details)
-vim.opt.showtabline = 2
+local tabs_as_projects = require("tabs-as-projects")
 
--- 2. Use plugin-provided tabline
+vim.opt.showtabline = 2
 vim.opt.tabline = "%!v:lua.require('tabs-as-projects.ui').tabline()"
 
--- 3. Create a keymap for the project picker
-local tabs_as_projects = require("tabs-as-projects")
+tabs_as_projects.setup({
+  ui = {
+    use_nerd_font = true
+  }
+})
+
 local search_dirs = {
   { path = "~/workspace", category = "main" },
   { path = "~/projects", category = "side" },
@@ -160,13 +185,31 @@ local search_dirs = {
 
 vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
 vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+
 ```
 
 ### Configuration Options
 
 ```lua
+local tabs_as_projects = require("tabs-as-projects")
 
-require("tabs-as-projects").pick_project({
+-- Setup options
+tabs_as_projects.setup({
+  -- optional - ui config
+  ui = {
+    -- optional, bool (default: false) - override tabline close_icon button to
+    -- use nerd font icon
+    use_nerd_font = true,
+
+    -- optional, string|nil - configures close_icon directly, you can set it
+    -- to "" to disable it completely
+    close_icon = '<your icon>'
+  }
+})
+
+
+-- Pick project options
+tabs_as_projects.pick_project({
 
   -- (list of directory configs, required)
   search_dirs = {
