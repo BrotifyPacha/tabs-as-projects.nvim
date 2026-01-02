@@ -11,7 +11,6 @@ vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({
   search_dirs = {
     { category = "home", path = "~" },
   },
-  pick_cmd = "tcd",
 }))
 
 -- always show tabline

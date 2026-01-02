@@ -68,14 +68,13 @@ Requirements:
     })
 
     -- Create a keymap for the project picker
-    local search_dirs = {
-      { path = "~/workspace", category = "main" },
-      { path = "~/projects", category = "side" },
-      { path = "~/.config", category = "config" },
-    }
-
-    vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-    vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+    vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+      search_dirs = {
+        { path = "~/workspace", category = "work" },
+        { path = "~/personal", category = "other" },
+        { path = "~/.config", category = "config" },
+      },
+    }))
 
   end,
 }
@@ -108,14 +107,13 @@ use {
     })
 
     -- Create a keymap for the project picker
-    local search_dirs = {
-      { path = "~/workspace", category = "main" },
-      { path = "~/projects", category = "side" },
-      { path = "~/.config", category = "config" },
-    }
-
-    vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-    vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+    vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+      search_dirs = {
+        { path = "~/workspace", category = "work" },
+        { path = "~/personal", category = "other" },
+        { path = "~/.config", category = "config" },
+      },
+    }))
 
   end,
 }
@@ -147,14 +145,13 @@ tabs_as_projects.setup({
 })
 
 -- Create a keymap for the project picker
-local search_dirs = {
-  { path = "~/workspace", category = "main" },
-  { path = "~/projects", category = "side" },
-  { path = "~/.config", category = "config" },
-}
-
-vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+  search_dirs = {
+    { path = "~/workspace", category = "work" },
+    { path = "~/personal", category = "other" },
+    { path = "~/.config", category = "config" },
+  },
+}))
 
 ```
 
@@ -177,14 +174,13 @@ tabs_as_projects.setup({
   }
 })
 
-local search_dirs = {
-  { path = "~/workspace", category = "main" },
-  { path = "~/projects", category = "side" },
-  { path = "~/.config", category = "config" },
-}
-
-vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+  search_dirs = {
+    { path = "~/workspace", category = "work" },
+    { path = "~/personal", category = "other" },
+    { path = "~/.config", category = "config" },
+  },
+}))
 
 ```
 
@@ -229,9 +225,6 @@ tabs_as_projects.pick_project({
       display_path_parts = 2,
     },
   },
-
-  -- (string, optional, default: "tcd") - ex command to use when user picks a project
-  pick_cmd = "tcd"
 
   -- (fun(path: string) string[], optional) - Function to list directories with
   list_dir = require("tabs-as-projects.list_dir_fn").find_list_dir
