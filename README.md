@@ -20,6 +20,8 @@ Table of Contents:
 
 ## Features
 
+![Look how pretty it is!](./assets/tabline_demo.gif)
+
 - **Project Picker**: Telescope-based fuzzy finder for quickly opening projects
   - Search across multiple configured directories
   - Categorize projects for better organization
