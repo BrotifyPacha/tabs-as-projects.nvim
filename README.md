@@ -20,6 +20,8 @@ Table of Contents:
 
 ## Features
 
+![Look how pretty it is!](./assets/tabline_demo.gif)
+
 - **Project Picker**: Telescope-based fuzzy finder for quickly opening projects
   - Search across multiple configured directories
   - Categorize projects for better organization
@@ -68,14 +70,13 @@ Requirements:
     })
 
     -- Create a keymap for the project picker
-    local search_dirs = {
-      { path = "~/workspace", category = "main" },
-      { path = "~/projects", category = "side" },
-      { path = "~/.config", category = "config" },
-    }
-
-    vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-    vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+    vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+      search_dirs = {
+        { path = "~/workspace", category = "work" },
+        { path = "~/personal", category = "other" },
+        { path = "~/.config", category = "config" },
+      },
+    }))
 
   end,
 }
@@ -108,14 +109,13 @@ use {
     })
 
     -- Create a keymap for the project picker
-    local search_dirs = {
-      { path = "~/workspace", category = "main" },
-      { path = "~/projects", category = "side" },
-      { path = "~/.config", category = "config" },
-    }
-
-    vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-    vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+    vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+      search_dirs = {
+        { path = "~/workspace", category = "work" },
+        { path = "~/personal", category = "other" },
+        { path = "~/.config", category = "config" },
+      },
+    }))
 
   end,
 }
@@ -147,14 +147,13 @@ tabs_as_projects.setup({
 })
 
 -- Create a keymap for the project picker
-local search_dirs = {
-  { path = "~/workspace", category = "main" },
-  { path = "~/projects", category = "side" },
-  { path = "~/.config", category = "config" },
-}
-
-vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+  search_dirs = {
+    { path = "~/workspace", category = "work" },
+    { path = "~/personal", category = "other" },
+    { path = "~/.config", category = "config" },
+  },
+}))
 
 ```
 
@@ -177,14 +176,13 @@ tabs_as_projects.setup({
   }
 })
 
-local search_dirs = {
-  { path = "~/workspace", category = "main" },
-  { path = "~/projects", category = "side" },
-  { path = "~/.config", category = "config" },
-}
-
-vim.keymap.set("n", "<F1><F1>", tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "tcd" }))
-vim.keymap.set("n", "<F1>l",    tabs_as_projects.pick_project({ search_dirs = search_dirs, pick_cmd = "lcd" }))
+vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+  search_dirs = {
+    { path = "~/workspace", category = "work" },
+    { path = "~/personal", category = "other" },
+    { path = "~/.config", category = "config" },
+  },
+}))
 
 ```
 
@@ -230,9 +228,6 @@ tabs_as_projects.pick_project({
     },
   },
 
-  -- (string, optional, default: "tcd") - ex command to use when user picks a project
-  pick_cmd = "tcd"
-
   -- (fun(path: string) string[], optional) - Function to list directories with
   list_dir = require("tabs-as-projects.list_dir_fn").find_list_dir
 })
@@ -273,6 +268,39 @@ pick_project({
   list_dir = my_custom_list_dir,
 })
 ```
+
+### Custom mappings inside telescope picker
+
+If you want to customize mappings inside the telescope picker,
+you can do so by providing your own 'attach_mappings' func.
+
+Here's an example config for that:
+
+```lua
+
+vim.keymap.set("n", "<F1>", tabs_as_projects.pick_project({
+  search_dirs = {
+    { path = "~/workspace", category = "work" },
+  },
+  mappings = function(_, map)
+
+    local telescope_actions = require("telescope.actions")
+    local tabs_as_projects_actions = require("tabs-as-projects.picker")
+
+    map("n", "<TAB>", telescope_actions.toggle_selection)
+    map("i", "<TAB>", telescope_actions.toggle_selection)
+    map("n", "<CR>",  tabs_as_projects_actions.select_tab_project)
+    map("i", "<CR>",  tabs_as_projects_actions.select_tab_project)
+    map("n", "<C-l>", tabs_as_projects_actions.select_local_project)
+    map("i", "<C-l>", tabs_as_projects_actions.select_local_project)
+
+    -- Return:
+    -- true - to enable default telescope mappings
+    -- false - to leave only the mappings you defined above
+    return true
+
+  end
+}))
 
 ### Customizing Colors
 
