@@ -62,6 +62,7 @@ M.select_local_project = select("lcd")
 --- @field path string
 --- @field category string|nil
 --- @field display_path_parts integer|nil
+--- @field detect_git_worktrees boolean|nil
 
 --- @param opts pick_project_options
 function M.pick_project(opts)
@@ -75,8 +76,7 @@ function M.pick_project(opts)
 
   --- @class project_picker_item
   --- @field absolute_path string
-  --- @field path_parts_to_display integer|nil
-  --- @field category string|nil
+  --- @field display_text string
 
   --- @type project_picker_item[]
   local resultList = {}
@@ -93,10 +93,42 @@ function M.pick_project(opts)
         goto continue
       end
 
+      local display_text = {}
+
+      if dir.category ~= "" then
+        display_text[#display_text+1] = string.format("(%s)", dir.category)
+      end
+
+      local util = require("tabs-as-projects.util")
+
+      local path_parts = vim.split(path, "/")
+      local last_n_parts = util.slice(
+        path_parts,
+        #path_parts - ((dir.display_path_parts or 2) - 1),
+        #path_parts
+      )
+
+      display_text[#display_text+1] = table.concat(last_n_parts, "/")
+
+      if dir.detect_git_worktrees ~= nil and dir.detect_git_worktrees then
+
+        local worktrees = require("tabs-as-projects.git_worktrees").list(path)
+
+        if #worktrees > 0 then
+          for _, worktree in ipairs(worktrees) do
+            local worktree_display_text = table.concat(display_text, " ") .. " (" .. worktree.branch .. ")"
+            resultList[#resultList+1] = {
+              absolute_path = worktree.absolute_path,
+              display_text = worktree_display_text,
+            }
+          end
+          goto continue
+        end
+      end
+
       resultList[#resultList+1] = {
         absolute_path = path,
-        path_parts_to_display = dir.display_path_parts,
-        category = dir.category,
+        display_text = table.concat(display_text, " "),
       }
       ::continue::
     end
@@ -130,24 +162,8 @@ function M.pick_project(opts)
         --- @type project_picker_item
         local item = item
 
-        local display_text = {}
-        if item.category ~= "" then
-          display_text[#display_text+1] = string.format("(%s)", item.category)
-        end
-
-        local util = require("tabs-as-projects.util")
-
-        local path_parts = vim.split(item.absolute_path, "/")
-        local last_n_parts = util.slice(
-          path_parts,
-          #path_parts - ((item.path_parts_to_display or 2) - 1),
-          #path_parts
-        )
-
-        display_text[#display_text+1] = table.concat(last_n_parts, "/")
-
         return {
-          display = table.concat(display_text, " "),
+          display = item.display_text,
           value = item.absolute_path,
           ordinal = item.absolute_path,
         }

@@ -89,13 +89,41 @@ end
 
 function M.tab_label(tab_selected, tab_number, tab_id)
 
+  local git_worktrees = require("tabs-as-projects.git_worktrees")
+
   local cwds = M.get_unique_cwds_on_tab(tab_number, tab_id)
 
   local selected_cwd = vim.fn.getcwd(0, tab_number)
   for i, cwd in ipairs(cwds) do
     local tab_highlight = M.get_tab_highlight(tab_selected, cwd == selected_cwd)
-    cwd = vim.fn.substitute(cwd, '.*[/\\\\]', '', '')
-    cwds[i] = tab_highlight .. " " .. cwd
+
+
+    local project_root
+    local root_results = vim.fs.find({ ".git" }, { upward = true, limit = 10, type = "directory", path = cwd })
+    if #root_results ~= 0 then
+      project_root = vim.fs.dirname(root_results[1])
+    end
+
+    local tab_branch = ""
+    for _, worktree in ipairs(git_worktrees.list(cwd)) do
+      if worktree.absolute_path == cwd then
+        tab_branch = worktree.branch
+      end
+    end
+
+    local tab_dir = cwd
+    if project_root ~= nil then
+      tab_dir = project_root
+    end
+
+    local dir_name = vim.fn.substitute(tab_dir, '.*[/\\\\]', '', '')
+
+    local tab_label = dir_name
+    if tab_branch ~= "" then
+      tab_label = string.format("%s (%s)", dir_name, tab_branch)
+    end
+
+    cwds[i] = tab_highlight .. " " .. tab_label
   end
   return table.concat(vim.tbl_flatten(cwds), " /")
 end
