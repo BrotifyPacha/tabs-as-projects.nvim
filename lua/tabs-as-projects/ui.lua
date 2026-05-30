@@ -25,6 +25,10 @@ local function setup_colors()
   create_hl("TabProjects_TabSelectedBold", extend_hl("TabProjects_TabSelected", { bold = true }))
   create_hl("TabProjects_Divider", extend_hl("TabProjects_Tab", { fg = sel_hl.bg }))
   create_hl("TabProjects_DividerSelected", { fg = sel_hl.bg, bg = tab_hl.bg })
+
+  create_hl("TabProjects_Picker_Category", { link = "Comment" })
+  create_hl("TabProjects_Picker_Entry", { link = "Normal" })
+  create_hl("TabProjects_Picker_Branch", { link = "Added" })
 end
 
 setup_colors()

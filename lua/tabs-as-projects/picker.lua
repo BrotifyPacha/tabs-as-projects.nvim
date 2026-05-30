@@ -76,10 +76,16 @@ function M.pick_project(opts)
 
   --- @class project_picker_item
   --- @field absolute_path string
-  --- @field display_text string
+  --- @field category string
+  --- @field project_name string
+  --- @field branch string
 
   --- @type project_picker_item[]
+
   local resultList = {}
+  local display_opts = {
+    category_width = 0
+  }
 
   for _, dir in ipairs(dirs) do
 
@@ -93,14 +99,21 @@ function M.pick_project(opts)
         goto continue
       end
 
-      local display_text = {}
+      local project_entry = {
+        absolute_path = path,
+        category = "",
+        project_name = "",
+        branch = "",
+      }
 
       if dir.category ~= "" then
-        display_text[#display_text+1] = string.format("(%s)", dir.category)
+        project_entry.category = string.format("(%s)", dir.category)
+
+        display_opts.category_width = math.max(display_opts.category_width, #dir.category)
+
       end
 
       local util = require("tabs-as-projects.util")
-
       local path_parts = vim.split(path, "/")
       local last_n_parts = util.slice(
         path_parts,
@@ -108,7 +121,7 @@ function M.pick_project(opts)
         #path_parts
       )
 
-      display_text[#display_text+1] = table.concat(last_n_parts, "/")
+      project_entry.project_name = table.concat(last_n_parts, "/")
 
       if dir.detect_git_worktrees ~= nil and dir.detect_git_worktrees then
 
@@ -116,20 +129,18 @@ function M.pick_project(opts)
 
         if #worktrees > 0 then
           for _, worktree in ipairs(worktrees) do
-            local worktree_display_text = table.concat(display_text, " ") .. " (" .. worktree.branch .. ")"
             resultList[#resultList+1] = {
               absolute_path = worktree.absolute_path,
-              display_text = worktree_display_text,
+              category = project_entry.category,
+              project_name = project_entry.project_name,
+              branch =  " " .. worktree.branch,
             }
           end
           goto continue
         end
       end
 
-      resultList[#resultList+1] = {
-        absolute_path = path,
-        display_text = table.concat(display_text, " "),
-      }
+      resultList[#resultList+1] = project_entry
       ::continue::
     end
   end
@@ -153,6 +164,18 @@ function M.pick_project(opts)
     attach_mappings_fn = opts.mappings
   end
 
+  local entry_display = require("telescope.pickers.entry_display")
+
+  local displayer = entry_display.create({
+    separator = " ",
+    items = {
+      { width = display_opts.category_width + 2, right_justify = true },
+      { },
+      { },
+    }
+  })
+
+
   local opts = {
     prompt_title = "Pick project",
     finder = finders.new_table({
@@ -163,7 +186,13 @@ function M.pick_project(opts)
         local item = item
 
         return {
-          display = item.display_text,
+          display = function (_)
+            return displayer({
+              { item.category, "TabProjects_Picker_Category"},
+              { item.project_name, "TabProjects_Picker_Entry"},
+              { item.branch, "TabProjects_Picker_Branch"},
+            })
+          end,
           value = item.absolute_path,
           ordinal = item.absolute_path,
         }
