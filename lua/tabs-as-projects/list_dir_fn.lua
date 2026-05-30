@@ -29,6 +29,6 @@ end
 
 --- Lists directories using 'find' command
 --- @type list_dir_fn
-M.find_list_dir = M.list_using_cmd('find "%s" -maxdepth 1 -type d')
+M.find_list_dir = M.list_using_cmd('find "%s" -maxdepth 1 -type d 2>/dev/null')
 
 return M
