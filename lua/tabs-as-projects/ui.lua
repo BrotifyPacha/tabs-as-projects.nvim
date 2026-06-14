@@ -109,7 +109,7 @@ function M.tab_label(tab_selected, tab_number, tab_id)
     end
 
     local tab_branch = ""
-    for _, worktree in ipairs(git_worktrees.list(cwd)) do
+    for _, worktree in ipairs(git_worktrees.list_sync(cwd)) do
       if worktree.absolute_path == cwd then
         tab_branch = worktree.branch
       end

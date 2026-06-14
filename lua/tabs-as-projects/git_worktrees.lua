@@ -73,36 +73,16 @@ local function path_relative_to(absolute_path, base)
   return absolute_path
 end
 
---- Lists the git worktrees of the repository that `path` belongs to.
---- Returns an empty list when `path` is not part of a git repository.
----
---- The bare entry of a bare repository is omitted as it is not a checkout one
---- can switch to.
----
---- @param path string Path inside (or at the root of) a git repository
+--- Turns raw porcelain records into the public `git_worktree[]` shape, dropping
+--- the bare entry of a bare repository (it is not a checkout one can switch to).
+--- @param raw table[] Records produced by `parsePorcelainGitWorktreeOutput`
+--- @param fallback_root string Used when `git` produced no worktree entry
 --- @return git_worktree[]
-function M.list(path)
-  assert(path ~= nil and path ~= "", "path cannot be empty")
-
-  local absolute_path = vim.fn.expand(path)
-
-  local cmd = string.format(
-    'git -C "%s" worktree list --porcelain 2>/dev/null',
-    absolute_path
-  )
-
-  local handle = io.popen(cmd)
-  assert(handle ~= nil, "error executing command: " .. cmd)
-
-  local output = handle:read("*a")
-  handle:close()
-
-  local raw = parsePorcelainGitWorktreeOutput(output)
-
+local function build_worktrees(raw, fallback_root)
   -- The first entry reported by git is the main (or bare) worktree; treat its
   -- location as the repository root so relative paths are stable regardless of
   -- which worktree `path` happened to point at.
-  local root = raw[1] and raw[1].absolute_path or vim.fn.expand(path)
+  local root = raw[1] and raw[1].absolute_path or fallback_root
 
   --- @type git_worktree[]
   local result = {}
@@ -120,7 +100,54 @@ function M.list(path)
   return result
 end
 
--- Exposed for testing.
-M._parsePorcelainGitWorktreeOutput = parsePorcelainGitWorktreeOutput
+--- Lists the git worktrees of the repository that `path` belongs to.
+--- Returns an empty list when `path` is not part of a git repository.
+---
+--- The bare entry of a bare repository is omitted as it is not a checkout one
+--- can switch to.
+---
+--- @param path string Path inside (or at the root of) a git repository
+--- @param on_done fun(worktrees: git_worktree[]) callback function
+function M.list(path, on_done)
+  assert(path ~= nil and path ~= "", "path cannot be empty")
+
+  local absolute_path = vim.fn.expand(path)
+
+  vim.system(
+    { "git", "-C", absolute_path, "worktree", "list", "--porcelain" },
+    { text = true },
+    function (obj)
+      local raw = parsePorcelainGitWorktreeOutput(obj.stdout)
+      on_done(build_worktrees(raw, absolute_path))
+    end
+  )
+
+end
+
+--- Lists the git worktrees of the repository that `path` belongs to.
+--- Returns an empty list when `path` is not part of a git repository.
+---
+--- The bare entry of a bare repository is omitted as it is not a checkout one
+--- can switch to.
+---
+--- @param path string Path inside (or at the root of) a git repository
+--- @return git_worktree[]
+function M.list_sync(path)
+  assert(path ~= nil and path ~= "", "path cannot be empty")
+
+  local absolute_path = vim.fn.expand(path)
+
+  local obj = vim.system(
+    { "git", "-C", absolute_path, "worktree", "list", "--porcelain" },
+    { text = true }
+  ):wait()
+
+  local raw = parsePorcelainGitWorktreeOutput(obj.stdout)
+
+  return build_worktrees(raw, absolute_path)
+
+end
+
+
 
 return M
