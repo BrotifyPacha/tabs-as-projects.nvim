@@ -62,7 +62,75 @@ M.select_local_project = select("lcd")
 --- @field path string
 --- @field category string|nil
 --- @field display_path_parts integer|nil
---- @field detect_git_worktrees boolean|nil
+
+--- @class project_picker_item
+--- @field absolute_path string
+--- @field category string
+--- @field project_name string
+--- @field branch string
+
+--- Builds the base picker item for a directory listed under `dir`.
+--- @param dir search_dir_config
+--- @param path string Absolute path of the discovered project directory
+--- @return project_picker_item
+local function build_base_item(dir, path)
+  --- @type project_picker_item
+  local item = {
+    absolute_path = path,
+    category = "",
+    project_name = "",
+    branch = "",
+  }
+
+  if dir.category ~= nil and dir.category ~= "" then
+    item.category = dir.category
+  end
+
+  local util = require("tabs-as-projects.util")
+  local path_parts = vim.split(path, "/")
+  local last_n_parts = util.slice(
+    path_parts,
+    #path_parts - ((dir.display_path_parts or 2) - 1),
+    #path_parts
+  )
+  item.project_name = table.concat(last_n_parts, "/")
+
+  return item
+end
+
+local build_entry_maker = function(category_width, project_name_width)
+
+  local entry_display = require("telescope.pickers.entry_display")
+
+  local displayer = entry_display.create({
+    separator = " ",
+    items = {
+      { width = category_width, right_justify = true },
+      { width = project_name_width },
+      {},
+    }
+  })
+
+  local entry_maker = function(item)
+
+    --- @type project_picker_item
+    local item = item
+
+    return {
+      display = function (_)
+        return displayer({
+          { item.category, "TabProjects_Picker_Category"},
+          { item.project_name, "TabProjects_Picker_Entry"},
+          { item.branch, "TabProjects_Picker_Branch"},
+        })
+      end,
+      value = item.absolute_path,
+      ordinal = item.project_name,
+    }
+  end
+
+  return entry_maker
+end
 
 --- @param opts pick_project_options
 function M.pick_project(opts)
@@ -74,82 +142,9 @@ function M.pick_project(opts)
     list_dir = opts.list_dir
   end
 
-  --- @class project_picker_item
-  --- @field absolute_path string
-  --- @field category string
-  --- @field project_name string
-  --- @field branch string
-
-  --- @type project_picker_item[]
-
-  local resultList = {}
-  local display_opts = {
-    category_width = 0
-  }
-
-  for _, dir in ipairs(dirs) do
-
-    local absolute_dir_path = vim.fn.expand(dir.path)
-
-    local paths = list_dir(absolute_dir_path)
-
-    for _, path in ipairs(paths) do
-
-      if path == absolute_dir_path then
-        goto continue
-      end
-
-      local project_entry = {
-        absolute_path = path,
-        category = "",
-        project_name = "",
-        branch = "",
-      }
-
-      if dir.category ~= "" then
-        project_entry.category = string.format("(%s)", dir.category)
-
-        display_opts.category_width = math.max(display_opts.category_width, #dir.category)
-
-      end
-
-      local util = require("tabs-as-projects.util")
-      local path_parts = vim.split(path, "/")
-      local last_n_parts = util.slice(
-        path_parts,
-        #path_parts - ((dir.display_path_parts or 2) - 1),
-        #path_parts
-      )
-
-      project_entry.project_name = table.concat(last_n_parts, "/")
-
-      if dir.detect_git_worktrees ~= nil and dir.detect_git_worktrees then
-
-        local worktrees = require("tabs-as-projects.git_worktrees").list(path)
-
-        if #worktrees > 0 then
-          for _, worktree in ipairs(worktrees) do
-            resultList[#resultList+1] = {
-              absolute_path = worktree.absolute_path,
-              category = project_entry.category,
-              project_name = project_entry.project_name,
-              branch =  " " .. worktree.branch,
-            }
-          end
-          goto continue
-        end
-      end
-
-      resultList[#resultList+1] = project_entry
-      ::continue::
-    end
-  end
-
   local actions = require "telescope.actions"
   local pickers = require "telescope.pickers"
-  local finders = require "telescope.finders"
   local sorters = require "telescope.sorters"
-  local dropdown = require "telescope.themes".get_dropdown()
 
   local attach_mappings_fn = function (_, map)
     map("n", "<TAB>", actions.toggle_selection)
@@ -164,47 +159,125 @@ function M.pick_project(opts)
     attach_mappings_fn = opts.mappings
   end
 
-  local entry_display = require("telescope.pickers.entry_display")
+  --- @type table<string, project_picker_item>
+  local result_list = {}
 
-  local displayer = entry_display.create({
-    separator = " ",
-    items = {
-      { width = display_opts.category_width + 2, right_justify = true },
-      { },
-      { },
-    }
-  })
-
-
-  local opts = {
-    prompt_title = "Pick project",
-    finder = finders.new_table({
-      results = resultList,
-      entry_maker = function(item)
-
-        --- @type project_picker_item
-        local item = item
-
-        return {
-          display = function (_)
-            return displayer({
-              { item.category, "TabProjects_Picker_Category"},
-              { item.project_name, "TabProjects_Picker_Entry"},
-              { item.branch, "TabProjects_Picker_Branch"},
-            })
-          end,
-          value = item.absolute_path,
-          ordinal = item.absolute_path,
-        }
-      end
-    }),
-    sorter = sorters.get_generic_fuzzy_sorter({}),
-    attach_mappings = attach_mappings_fn,
+  local display_opts = {
+    category_width = 0,
+    project_name_width = 0
   }
 
-  local dir_picker = pickers.new(dropdown, opts)
+  local gen_finder = function()
+
+    local list = {}
+    for _, item in pairs(result_list) do
+      list[#list+1] = item
+    end
+
+    return require("telescope.finders").new_table({
+        results = list,
+        entry_maker = build_entry_maker(
+          display_opts.category_width,
+          display_opts.project_name_width
+        ),
+      })
+  end
+
+  local dir_picker = pickers.new(
+    require "telescope.themes".get_dropdown(),
+    {
+      prompt_title = "Pick project",
+      finder = gen_finder(),
+      sorter = sorters.get_generic_fuzzy_sorter({}),
+      attach_mappings = attach_mappings_fn,
+    }
+  )
 
   dir_picker:find()
+
+  local git_worktrees = require("tabs-as-projects.git_worktrees")
+
+  --- @class fetch_worktree_queue_item
+  --- @field item_index number
+  --- @field base_item project_picker_item
+  ---
+  --- @type project_picker_item[]
+  local fetch_worktree_queue = {}
+
+  for _, dir in ipairs(dirs) do
+    local absolute_dir_path = vim.fn.expand(dir.path)
+    for _, path in ipairs(list_dir(absolute_dir_path)) do
+      if path == absolute_dir_path then
+        goto continue
+      end
+
+      local item = build_base_item(dir, path)
+
+      display_opts.category_width = math.max(display_opts.category_width, #dir.category)
+      display_opts.project_name_width = math.max(display_opts.project_name_width, #item.project_name)
+
+      result_list[item.absolute_path] = item
+      dir_picker:refresh(gen_finder())
+
+      fetch_worktree_queue[#fetch_worktree_queue+1] = item
+
+      ::continue::
+    end
+  end
+
+  local function process_in_batches(items, batch_size, callback)
+    local i = 1
+
+    local function process_next_batch()
+      local batch = {}
+      for j = 1, batch_size do
+        if i > #items then break end
+        batch[j] = items[i]
+        i = i + 1
+      end
+
+      if #batch > 0 then
+        callback(batch, function()
+          if i <= #items then
+            vim.schedule(process_next_batch) -- yield to event loop
+          end
+        end)
+      end
+    end
+
+    process_next_batch()
+  end
+
+  process_in_batches(fetch_worktree_queue, 10, function (batch, done)
+    for _, queue_item in ipairs(batch) do
+
+      git_worktrees.list(queue_item.absolute_path, function (worktrees)
+
+        for i, worktree in ipairs(worktrees) do
+
+          --- @type project_picker_item
+          local wt_item = {
+            category      = queue_item.category,
+            project_name  = queue_item.project_name,
+            absolute_path = worktree.absolute_path,
+            branch        = worktree.branch,
+          }
+
+          result_list[worktree.absolute_path] = wt_item
+
+          dir_picker:refresh(gen_finder())
+
+        end
+
+        if queue_item.absolute_path == batch[#batch].absolute_path then
+          done()
+        end
+
+      end)
+    end
+  end)
+
 end
+
 
 return M
