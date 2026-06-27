@@ -125,7 +125,7 @@ local build_entry_maker = function(category_width, project_name_width)
         })
       end,
       value = item.absolute_path,
-      ordinal = item.project_name,
+      ordinal = item.project_name .. " " .. item.branch,
     }
   end
 
