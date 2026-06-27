@@ -1,11 +1,19 @@
 local M = {
-  opts = {}
+  --- @type ui_options
+  opts = {
+    tab_label_format = '(%s)'
+  }
 }
 
+--- @param name string
+--- @return vim.api.keyset.highlight
 local function get_hl(name)
   return vim.api.nvim_get_hl(0, { name = name , link = false})
 end
 
+--- @param name string
+--- @param opts vim.api.keyset.highlight 
+--- @return vim.api.keyset.highlight
 local function create_hl(name, opts)
   if opts.link ~= nil then
     opts = get_hl(opts.link)
@@ -15,16 +23,24 @@ local function create_hl(name, opts)
   return opts
 end
 
+--- @param name string
+--- @param opts vim.api.keyset.highlight 
+--- @return vim.api.keyset.highlight
 local function extend_hl(name, opts)
   return vim.tbl_extend("force", get_hl(name), opts)
 end
 
 local function setup_colors()
+  local added_hl = get_hl("Added")
+
   local tab_hl = create_hl("TabProjects_Tab", { link = "Tabline"})
   local sel_hl = create_hl("TabProjects_TabSelected", { link="Normal" })
   create_hl("TabProjects_TabSelectedBold", extend_hl("TabProjects_TabSelected", { bold = true }))
   create_hl("TabProjects_Divider", extend_hl("TabProjects_Tab", { fg = sel_hl.bg }))
   create_hl("TabProjects_DividerSelected", { fg = sel_hl.bg, bg = tab_hl.bg })
+
+  create_hl("TabProjects_Tab_Branch", extend_hl('TabProjects_Tab', { fg = added_hl.fg, dim = true }))
+  create_hl("TabProjects_TabSelected_Branch", extend_hl('TabProjects_TabSelected', { fg = added_hl.fg }) )
 
   create_hl("TabProjects_Picker_Category", { link = "Comment" })
   create_hl("TabProjects_Picker_Entry", { link = "Normal" })
@@ -39,17 +55,26 @@ vim.api.nvim_create_autocmd("ColorScheme", {
 
 --- @class ui_options
 --- @field close_icon string|nil
+--- @field branch_icon string|nil
 --- @field use_nerd_font boolean|nil
+--- @field tab_label_format string|nil
 
 --- @param opts ui_options
 function M.setup(opts)
 
   if opts.use_nerd_font then
     M.opts.close_icon = ''
+    M.opts.branch_icon = ''
   end
+
+  M.opts.tab_label_format = M.opts.branch_icon .. ' %s'
 
   if opts.close_icon ~= nil then
     M.opts.close_icon = opts.close_icon
+  end
+
+  if opts.tab_label_format ~= nil then
+    M.opts.tab_label_format = opts.tab_label_format
   end
 
 end
@@ -99,8 +124,7 @@ function M.tab_label(tab_selected, tab_number, tab_id)
 
   local selected_cwd = vim.fn.getcwd(0, tab_number)
   for i, cwd in ipairs(cwds) do
-    local tab_highlight = M.get_tab_highlight(tab_selected, cwd == selected_cwd)
-
+    local tab_highlight, tab_branch_highlight = M.get_tab_highlights(tab_selected, cwd == selected_cwd)
 
     local project_root
     local root_results = vim.fs.find({ ".git" }, { upward = true, limit = 10, type = "directory", path = cwd })
@@ -124,7 +148,7 @@ function M.tab_label(tab_selected, tab_number, tab_id)
 
     local tab_label = dir_name
     if tab_branch ~= "" then
-      tab_label = string.format("%s (%s)", dir_name, tab_branch)
+      tab_label = dir_name .. ' ' .. tab_branch_highlight .. string.format(M.opts.tab_label_format, tab_branch) .. tab_highlight
     end
 
     cwds[i] = tab_highlight .. " " .. tab_label
@@ -132,16 +156,18 @@ function M.tab_label(tab_selected, tab_number, tab_id)
   return table.concat(vim.tbl_flatten(cwds), " /")
 end
 
-function M.get_tab_highlight(tab_selected, dir_is_current_dir)
+--- @return string tab_highlight
+--- @return string tab_branch_highlight
+function M.get_tab_highlights(tab_selected, dir_is_current_dir)
   if not tab_selected then
-    return '%#TabProjects_Tab#'
+    return '%#TabProjects_Tab#', '%#TabProjects_Tab_Branch#'
   end
 
   if dir_is_current_dir then
-    return '%#TabProjects_TabSelectedBold#'
+    return '%#TabProjects_TabSelectedBold#', '%#TabProjects_TabSelected_Branch#'
   end
 
-  return '%#TabProjects_TabSelected#'
+  return '%#TabProjects_TabSelected#', '%#TabProjects_TabSelected_Branch#'
 end
 
 function M.get_unique_cwds_on_tab(tab_number, tab_id)
