@@ -68,6 +68,14 @@ M.select_local_project = select("lcd")
 --- @field category string
 --- @field project_name string
 --- @field branch string
+--- @field worktree_path string
+
+--- @class max_widths
+--- @field category number
+--- @field project_name number
+--- @field branch number
+--- @field worktree_path number
+--- @field project_name_with_worktree number
 
 --- Builds the base picker item for a directory listed under `dir`.
 --- @param dir search_dir_config
@@ -80,6 +88,7 @@ local function build_base_item(dir, path)
     category = "",
     project_name = "",
     branch = "",
+    worktree_path = "",
   }
 
   if dir.category ~= nil and dir.category ~= "" then
@@ -98,34 +107,55 @@ local function build_base_item(dir, path)
   return item
 end
 
-local build_entry_maker = function(category_width, project_name_width)
+--- @param widths max_widths
+local function build_entry_maker(widths)
 
-  local entry_display = require("telescope.pickers.entry_display")
-
-  local displayer = entry_display.create({
-    separator = " ",
-    items = {
-      { width = category_width, right_justify = true },
-      { width = project_name_width },
-      {},
-    }
-  })
-
+  --- @type function(project_picker_item)
   local entry_maker = function(item)
 
-    --- @type project_picker_item
-    local item = item
+    local pad_char = " "
+    local sep = " "
+
+    local pad_left = function (text, width)
+      return string.rep(pad_char, width - #text) .. text
+    end
+    local pad_right = function (text, width)
+      return text .. string.rep(pad_char, width - #text)
+    end
+
+    local pad_center = function (left_text, right_text, width)
+      return left_text .. string.rep(pad_char, width - #left_text - #right_text) .. right_text, width - #left_text - #right_text
+    end
+
+    local str = ""
+    local highlights = {}
+
+    str = pad_left(item.category, widths.category)
+    table.insert(highlights, { {0, #str}, "TabProjects_Picker_Category" })
+    str = str .. sep
+
+    local project_name_highlight_start = #str
+    local has_worktree = item.worktree_path ~= ""
+    local wt_path = ""
+    if has_worktree then
+      wt_path = " ./" .. item.worktree_path .. "/"
+    end
+    local project_name_with_worktree_column, pad_length = pad_center(item.project_name, wt_path, widths.project_name_with_worktree + 4)
+    str = str .. project_name_with_worktree_column
+    table.insert(highlights, { {project_name_highlight_start, project_name_highlight_start + #item.project_name}, "TabProjects_Picker_Entry" })
+    table.insert(highlights, { {project_name_highlight_start + #item.project_name + pad_length, project_name_highlight_start + #item.project_name + pad_length + #wt_path }, "TabProjects_Picker_Category" })
+    str = str .. sep
+
+    local branch_start = #str
+    str = str .. pad_right(item.branch, widths.branch)
+    table.insert(highlights, { {branch_start, branch_start + widths.branch }, "TabProjects_Picker_Branch" })
 
     return {
-      display = function (_)
-        return displayer({
-          { item.category, "TabProjects_Picker_Category"},
-          { item.project_name, "TabProjects_Picker_Entry"},
-          { item.branch, "TabProjects_Picker_Branch"},
-        })
+      display = function ()
+        return str, highlights
       end,
-      value = item.absolute_path,
-      ordinal = item.project_name .. " " .. item.branch,
+      value = item.absolute_path .. " " .. item.worktree_path .. " " .. item.branch,
+      ordinal = item.project_name .. " " .. item.worktree_path .. " " .. item.branch,
     }
   end
 
@@ -162,9 +192,13 @@ function M.pick_project(opts)
   --- @type table<string, project_picker_item>
   local result_list = {}
 
-  local display_opts = {
-    category_width = 0,
-    project_name_width = 0
+  --- @type max_widths
+  local max_widths = {
+    category = 0,
+    project_name = 0,
+    branch = 0,
+    worktree_path = 0,
+    project_name_with_worktree = 0,
   }
 
   local gen_finder = function()
@@ -175,16 +209,23 @@ function M.pick_project(opts)
     end
 
     return require("telescope.finders").new_table({
-        results = list,
-        entry_maker = build_entry_maker(
-          display_opts.category_width,
-          display_opts.project_name_width
-        ),
-      })
+      results = list,
+      entry_maker = build_entry_maker(max_widths),
+    })
   end
 
   local dir_picker = pickers.new(
-    require "telescope.themes".get_dropdown(),
+    require "telescope.themes".get_dropdown({
+      layout_config = {
+        width = function (_, max_columns, _)
+          local total = 
+          max_widths.category + 1 +
+          max_widths.project_name_with_worktree + 1 + 4 +
+          max_widths.branch + 2
+          return math.max(total, 80)
+        end
+      }
+    }),
     {
       prompt_title = "Pick project",
       finder = gen_finder(),
@@ -213,8 +254,8 @@ function M.pick_project(opts)
 
       local item = build_base_item(dir, path)
 
-      display_opts.category_width = math.max(display_opts.category_width, #dir.category)
-      display_opts.project_name_width = math.max(display_opts.project_name_width, #item.project_name)
+      max_widths.category = math.max(max_widths.category, #dir.category)
+      max_widths.project_name = math.max(max_widths.project_name, #item.project_name)
 
       result_list[item.absolute_path] = item
       dir_picker:refresh(gen_finder())
@@ -243,6 +284,9 @@ function M.pick_project(opts)
           end
         end)
       end
+
+      dir_picker:full_layout_update()
+
     end
 
     process_next_batch()
@@ -261,11 +305,16 @@ function M.pick_project(opts)
             project_name  = queue_item.project_name,
             absolute_path = worktree.absolute_path,
             branch        = worktree.branch,
+            worktree_path = worktree.project_relative_path,
           }
 
           result_list[worktree.absolute_path] = wt_item
 
           dir_picker:refresh(gen_finder())
+
+          max_widths.worktree_path = math.max(max_widths.worktree_path, #wt_item.worktree_path)
+          max_widths.branch = math.max(max_widths.branch, #wt_item.branch)
+          max_widths.project_name_with_worktree = math.max(max_widths.project_name_with_worktree, #wt_item.project_name + #wt_item.worktree_path)
 
         end
 
