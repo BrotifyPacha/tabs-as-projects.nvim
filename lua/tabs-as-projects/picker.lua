@@ -154,7 +154,7 @@ local function build_entry_maker(widths)
       display = function ()
         return str, highlights
       end,
-      value = item.absolute_path .. " " .. item.worktree_path .. " " .. item.branch,
+      value = item.absolute_path,
       ordinal = item.project_name .. " " .. item.worktree_path .. " " .. item.branch,
     }
   end
